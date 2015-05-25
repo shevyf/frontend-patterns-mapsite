@@ -1,3 +1,6 @@
+var marker;
+var map;
+
 function initialise() {
     var mapbox = document.getElementById('map-container');
     var mapOptions = {
@@ -6,7 +9,7 @@ function initialise() {
         mapTypeId: google.maps.MapTypeId.ROADMAP
     }
     
-    var map = new google.maps.Map(mapbox, mapOptions);
+    map = new google.maps.Map(mapbox, mapOptions);
     
     map.set('styles', [
       {
@@ -48,6 +51,20 @@ function initialise() {
       },{
       }
     ]);
+    
+    var markerOptions = {
+        position: new google.maps.LatLng(53.34648, -6.2835266),
+        map: map,
+        title: 'My House is a very very very nice house',
+        draggable: true
+    };
+    
+    marker = new google.maps.Marker(markerOptions);
 }
 
 google.maps.event.addDomListener(window, 'load', initialise);
+
+// Markers - can be created and stored, and not drawn til later if you like using marker.setMap()
+// https://developers.google.com/maps/documentation/javascript/markers
+// draggable - dragged marker changes its position value.
+// Q: can you store a marker as an observable? Or ca you assign an observable as a marker's position? position: new google.maps.LatLng(ko.observable())?
