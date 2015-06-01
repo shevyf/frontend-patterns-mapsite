@@ -43,7 +43,7 @@ var localMarkers = [
     {
         title: 'Pantibar',
         position: [53.346773, -6.267874],
-        content: 'https://www.facebook.com/colin.mccusker1/videos/10153282679114618/'
+        content: '<a>https://www.facebook.com/colin.mccusker1/videos/10153282679114618/</a>'
     },
     {
         title: 'Dublin Castle Courtyard',
@@ -58,51 +58,88 @@ var localMarkers = [
     {
         title: 'RTE - Pantigate',
         position: [53.315750, -6.223464],
-        content: 'https://www.youtube.com/embed/R0-y9ZqiY90'
+        content: '<iframe width="560" height="315" src="https://www.youtube.com/embed/R0-y9ZqiY90" frameborder="0" allowfullscreen></iframe>'
     },
     {
         title: 'Abby Theatre',
         position: [53.348614, -6.257153],
-        content: 'https://www.youtube.com/embed/WXayhUzWnl0'
+        content: '<iframe width="560" height="315" src="https://www.youtube.com/embed/WXayhUzWnl0" frameborder="0" allowfullscreen></iframe>'
     },
         {
         title: 'My House',
         position: [53.34648, -6.2835266],
-        content: 'http://www.pixiespace.com/resume/]'
+        content: 'http://www.pixiespace.com/resume/'
     },
 ];
 
-
-function newMarker(pos, name, content) {
+// marker 
+function maplocation(pos, name, content) {
     this.position = pos;
     this.name = name;
+    this.content = content;
+    this.visibleMarker = ko.observable(true);
     
-    var marker = new google.maps.Marker({
+    this.marker = new google.maps.Marker({
         position: new google.maps.LatLng(pos[0], pos[1]),
         title: name,
         map: map
     });
     
-    google.maps.event.addListener(marker, 'click', function() {
-        infowindow.open(map,marker);
-        infowindow.setContent('<h3>'+ marker.title+ '</h3><div>'+marker.position+'</div>');
-    })
+    this.popup = new google.maps.InfoWindow({
+        content: content  });
+    
+    google.maps.event.addListener(this.marker, 'click', (function(popup, marker) {
+        return function() {
+        popup.open(map,marker);
+        }
+    })(this.popup, this.marker)
+    );
+    
+    this.showPopup = function() {
+        if(this.popup.getMap()){this.popup.close()} else {this.popup.open(map, this.marker)};
+    };
+    
+    this.hideButton = function(){this.visibleMarker(false)};
+    this.showButton = function(){this.visibleMarker(true)};
 }
 
-//var marker;
 var map;
-var markerViewModel = ko.observableArray()
 
+function markerViewModel() {
+    self = this;
+    
+    self.locations = (function(){
+        var locationList = [];
+        localMarkers.forEach(function(item) {
+            locationList.push(new maplocation(item.position, item.title, item.content)) 
+        });
+        return locationList;
+    })();
+    
+    self.search = function() {
+        var searchTerm = $('#searchbox').val().toLowerCase();
+        console.log(searchTerm.length);
+        if (searchTerm.length > 0) {
+                //console.log("searchterm more than 0");
+                self.locations.forEach(function(location){
+                    
+                    if (location.name.toLowerCase().includes(searchTerm)) { location.visibleMarker(true)} else {location.visibleMarker(false)}
+                });
+            }
+        else {
+            console.log("searchterm less than 0");
+            self.locations.forEach(function(location){location.visibleMarker(true)});
+            }
+    };
+    // on type, if length of string >0, foreach in locationList, if string in name, visible: true else visible:false. If length of string 0, foreach(visible = true)
+}
 
-var infowindow = new google.maps.InfoWindow({
-      content: "Hello World!"  });
 // set up map, add markers, 
-
 
 function initialise() {
     var mapbox = document.getElementById('map-container');
     var mapOptions = {
-        center: new google.maps.LatLng(53.3484364,-6.2775284), //centre of dublin
+        center: new google.maps.LatLng(53.34987099459691, -6.2708336062987575), //centre of dublin
         zoom: 15,
         mapTypeId: google.maps.MapTypeId.ROADMAP
     }
@@ -110,10 +147,9 @@ function initialise() {
     map = new google.maps.Map(mapbox, mapOptions);
         map.set('styles', mapStyles);
     
+    ko.applyBindings(new markerViewModel());
     
-    localMarkers.forEach(function(item) {
-       markerViewModel.push(new newMarker(item.position, item.title, item.content)) 
-    });
+    
 }
 
 google.maps.event.addDomListener(window, 'load', initialise);
@@ -171,4 +207,7 @@ this.locations = ko.observableArray(ko.utils.arrayMap(locations, function (locat
 this.setPopup = function(marker){this.popupTarget = marker}
 
 
+TODO: AJAX flickr content for popups
+https://www.flickr.com/services/api/explore/flickr.photos.search
+https://www.flickr.com/services/api/flickr.photos.search.html
 */
