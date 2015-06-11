@@ -1,3 +1,4 @@
+var map;
 var mapStyles = [
       {
         "featureType": "water",
@@ -72,6 +73,30 @@ var localMarkers = [
     },
 ];
 
+var getFlickr = function(marker, popup) {
+    var pos = marker.getPosition();
+    console.log(pos);
+    var url = 'https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=7abca36c88c5c619545ef842155974d9&lat='+pos.A+'&lon='+pos.F+'&radius=0.01&per_page=20&page=1&format=json';
+    $.ajax(url, {
+        dataType: 'jsonp',
+        //Flickr's API requires that the callback name is specified with 'jsoncallback' instead of just callback which is jQuery's default.
+        jsonp: 'jsoncallback',
+        success: function(response) {
+            console.log(response);
+            var allPhotos = response.photos.photo;
+            var content = '<div class="container-fluid popup" width=450 height=450><div class="row popup">';
+            content += '<h3>'+marker.getTitle()+'</h3>';
+            for (i=0; i <allPhotos.length; i++) {
+                var photoUrl = 'https://farm'+ allPhotos[i].farm +'.staticflickr.com/'+ allPhotos[i].server +'/'+ allPhotos[i].id +'_'+ allPhotos[i].secret +'_q.jpg';
+                var thisImage = '<img src="'+photoUrl+'">';
+                content += thisImage;
+            }
+            content += '</div></div>';
+            popup.setContent(content);
+        }
+    })
+}
+
 // marker 
 function maplocation(pos, name, content) {
     this.position = pos;
@@ -90,8 +115,11 @@ function maplocation(pos, name, content) {
     
     google.maps.event.addListener(this.marker, 'click', (function(popup, marker) {
         return function() {
-        popup.open(map,marker);
+            console.log(marker.getPosition());
+            getFlickr(marker, popup);
+            popup.open(map,marker);
         }
+        
     })(this.popup, this.marker)
     );
     
@@ -102,8 +130,6 @@ function maplocation(pos, name, content) {
     this.hideButton = function(){this.visibleMarker(false)};
     this.showButton = function(){this.visibleMarker(true)};
 }
-
-var map;
 
 function markerViewModel() {
     self = this;
@@ -131,10 +157,21 @@ function markerViewModel() {
             self.locations.forEach(function(location){location.visibleMarker(true)});
             }
     };
-    // on type, if length of string >0, foreach in locationList, if string in name, visible: true else visible:false. If length of string 0, foreach(visible = true)
+    
 }
 
-// set up map, add markers, 
+
+
+var getFlickr2 = function(pos) {
+    var url = 'https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=7abca36c88c5c619545ef842155974d9&lat='+pos[0]+'&lon='+pos[1]+'&radius=0.01&per_page=20&page=1&format=json&nojsoncallback=1';
+    $.getJSON(url, function(response) {
+        console.log(response);
+        console.log(response.photos.photo.length);
+        for (i=0; i<response.photos.photo.length; i++) {
+            console.log(response.photos.photo[i].id)
+        }
+    })
+}
 
 function initialise() {
     var mapbox = document.getElementById('map-container');
@@ -157,26 +194,10 @@ google.maps.event.addDomListener(window, 'load', initialise);
 // Markers - can be created and stored, and not drawn til later if you like using marker.setMap()
 // https://developers.google.com/maps/documentation/javascript/markers
 // draggable - dragged marker changes its position value.
-// Q: can you store a marker as an observable? Or ca you assign an observable as a marker's position? position: new google.maps.LatLng(ko.observable())?
 
 
 /*
-Plan: make an object which is a marker, that contains lat, lng, title, how to draw itself (marker.setMap(map))
-Make popup boxes for each marker object which link to some content
-initiate with a nice little list of coords and stuff I give it.
-later: Make search box, not sure how yet.
 
-
-    var markerOptions = {
-        position: new google.maps.LatLng(53.34648, -6.2835266),
-        map: map,
-        title: 'My House is a very very very nice house',
-        draggable: true
-    };
-    
-    marker = new google.maps.Marker(markerOptions);
-    
-    
 Organise!
 
 markerViewModel
@@ -192,22 +213,11 @@ each marker
 
 searchbox - when typed in triggers an event to compare contents to titles
 
-
-var markerViewModel = function (locations) {
-
-this.popupTarget = ko.observable();
-
-this.locations = ko.observableArray(ko.utils.arrayMap(locations, function (location){
-    marker = new Marker({"stuff from location"});
-    
-    return {pos: pos, name: name, description: description, marker: marker,  };
-
-}));
-
-this.setPopup = function(marker){this.popupTarget = marker}
-
-
 TODO: AJAX flickr content for popups
 https://www.flickr.com/services/api/explore/flickr.photos.search
 https://www.flickr.com/services/api/flickr.photos.search.html
+
+https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=fc778e032734a15eb7f780767d7994ba&lat=53.343174&lon=-6.267567&radius=0.01&per_page=20&page=1&format=json&nojsoncallback=1&api_sig=865d52131b668519cec3b571100e3b65
+
 */
+
