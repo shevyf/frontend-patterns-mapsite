@@ -1,4 +1,16 @@
-var map;
+/*
+TODO:
+
+Change markers when selected (e.g. bounce)
+Grunt automation
+*/
+
+//Starting Variables
+
+//google map object, to be accessible generally
+var map; 
+
+//map styles, just for the looks
 var mapStyles = [
       {
         "featureType": "water",
@@ -16,7 +28,7 @@ var mapStyles = [
         "featureType": "road",
         "elementType": "labels",
         "stylers": [
-          { "visibility": "off" }
+          { "visibility": "on" }
         ]
       },{
         "featureType": "poi",
@@ -28,7 +40,9 @@ var mapStyles = [
         "featureType": "poi.park",
         "elementType": "geometry.fill",
         "stylers": [
-          { "color": "#0cca8a" }
+          { "color": "#0cca8a",
+            "visibility": "on"
+          }
         ]
       },{
         "featureType": "poi.medical",
@@ -40,6 +54,8 @@ var mapStyles = [
       }
     ]
 
+//list of locations, with name, location and some initial content. 
+//TODO: remove initial content or replace with AJAX'd stuff
 var localMarkers = [
     {
         title: 'Pantibar',
@@ -57,29 +73,41 @@ var localMarkers = [
         content: 'http://www.tv3.ie/xpose/article/tv-news/167801/Vincent-Browne-LIVE-from-The-George-Bar'
     },
     {
-        title: 'RTE - Pantigate',
-        position: [53.315750, -6.223464],
-        content: '<iframe width="560" height="315" src="https://www.youtube.com/embed/R0-y9ZqiY90" frameborder="0" allowfullscreen></iframe>'
-    },
-    {
         title: 'Abby Theatre',
         position: [53.348614, -6.257153],
         content: '<iframe width="560" height="315" src="https://www.youtube.com/embed/WXayhUzWnl0" frameborder="0" allowfullscreen></iframe>'
     },
-        {
-        title: 'My House',
-        position: [53.34648, -6.2835266],
-        content: 'http://www.pixiespace.com/resume/'
+    {
+        title: 'Trinity College',
+        position: [53.344401, -6.257330],
+        content: ''
     },
+    {
+        title: 'Millstone Restaurant',
+        position: [53.344126, -6.262710],
+        content:''
+    },
+    {
+        title: 'Meeting House Square',
+        position: [53.344991, -6.265374],
+        content:''
+    },
+    {
+        title: 'Lemon Jelly',
+        position: [53.347149, -6.265395],
+        content: ''
+    }
 ];
 
+//function to take a marker and popup and get flicker data, create a string and set content of popup box
+//Note: Flickr's API requires that the callback name is specified with 'jsoncallback' instead of just callback which is jQuery's default.
+//TODO: add other AJAX call to foursquare
 var getFlickr = function(marker, popup) {
     var pos = marker.getPosition();
     console.log(pos);
-    var url = 'https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=7abca36c88c5c619545ef842155974d9&lat='+pos.A+'&lon='+pos.F+'&radius=0.01&per_page=20&page=1&format=json';
+    var url = 'https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=7abca36c88c5c619545ef842155974d9&lat='+pos.A+'&lon='+pos.F+'&radius=0.01&per_page=8&page=1&format=json';
     $.ajax(url, {
         dataType: 'jsonp',
-        //Flickr's API requires that the callback name is specified with 'jsoncallback' instead of just callback which is jQuery's default.
         jsonp: 'jsoncallback',
         success: function(response) {
             console.log(response);
@@ -97,38 +125,98 @@ var getFlickr = function(marker, popup) {
     })
 }
 
-// marker 
-function maplocation(pos, name, content) {
-    this.position = pos;
-    this.name = name;
-    this.content = content;
-    this.visibleMarker = ko.observable(true);
+var getFlickr = function(pos, name, flickr, foursq) {
+    //var pos = marker.getPosition();
+    console.log(pos);
     
-    this.marker = new google.maps.Marker({
+    var flickrUrl = 'https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=7abca36c88c5c619545ef842155974d9&lat='+pos[0]+'&lon='+pos[1]+'&radius=0.01&per_page=8&page=1&format=json';
+    $.ajax(flickrUrl, {
+        dataType: 'jsonp',
+        jsonp: 'jsoncallback',
+        success: function(response) {
+            console.log(response);
+            var allPhotos = response.photos.photo;
+            var flickrStr = '<div class="photos">';
+            for (i=0; i <allPhotos.length; i++) {
+                var photoUrl = 'https://farm'+ allPhotos[i].farm +'.staticflickr.com/'+ allPhotos[i].server +'/'+ allPhotos[i].id +'_'+ allPhotos[i].secret +'_q.jpg';
+                var thisImage = '<img src="'+photoUrl+'">';
+                flickrStr += thisImage;
+            }
+            flickrStr += '</div>';
+            flickr(flickrStr);
+        }
+    });
+    
+    var foursqUrl = 'https://api.foursquare.com/v2/venues/search/?ll='+pos[0]+','+pos[1]+'&radius=50&query='+name+'&intent=browse&client_id=JILQ425OSSB1A4PVRXHIOSMZLBMQ2LDZPPSDPBVPYIMLSVDQ&client_secret=RT0YLMXT4DRGCVZLTNKLKBTXHDCHFFPAE5AKZKPQ3SP15Q0R&v=20130815';
+    $.ajax(foursqUrl, {
+        dataType: 'json',
+        success: function(response) {
+            console.log(response);
+            var foursqStr = '<div>';
+            var allPlaces = response.response.venues;
+            var placeData = '<div><h4>Nearby Locations</h4><div class="singleplace">';
+            for (i=0; i < allPlaces.length; i++) {
+                //display venue.name, venue.formattedAddress[0][1][2], webpage and venue.formattedPhone
+                var thisPlace = allPlaces[i];
+                console.log(thisPlace);
+                placeData += '<div class="placename">'+thisPlace.name+'</div>';
+                placeData += '<div class="placedetails">Address: '+ thisPlace.location.formattedAddress[0] + ' ' + thisPlace.location.formattedAddress[1] + ' ' + thisPlace.location.formattedAddress[2] + '</div>';
+                placeData += '<div class="placedetails">Phone: '+ thisPlace.contact.formattedPhone + '</div>';
+            };
+            foursqStr += placeData;
+            foursqStr += '</div></div>';
+            foursq(foursqStr);
+        }
+    });
+}
+
+// location object to go in array. Contains info about the location inc. whether it's visible in the search buttons or not, plus the marker and popup objects for each location (and listeners with closures)
+// Also added functions to show/hide popups, and to show/hide search panel button
+//TODO: Integrate getting info with showPopup function. Can listener take this function as a callback?
+function maplocation(pos, name, content) {
+    var self = this;
+    self.position = pos;
+    self.name = name;
+    self.flickr = ko.observable('<h4>Flickr Stream</h4>');
+    self.foursquare = ko.observable('<h4>Foursquare nearby locations</h4>');
+    self.visibleMarker = ko.observable(true);
+    
+    self.marker = new google.maps.Marker({
         position: new google.maps.LatLng(pos[0], pos[1]),
         title: name,
         map: map
     });
     
-    this.popup = new google.maps.InfoWindow({
-        content: content  });
+    self.popup = new google.maps.InfoWindow({
+        content: '<div><h3>' + name + '</h3></div>'  });
     
-    google.maps.event.addListener(this.marker, 'click', (function(popup, marker) {
-        return function() {
-            console.log(marker.getPosition());
-            getFlickr(marker, popup);
-            popup.open(map,marker);
-        }
-        
-    })(this.popup, this.marker)
-    );
+    self.popupdate = ko.computed(function (){
+        //if either flickr or foursquare change, update popup content
+        var newContent = '<div class="container-fluid popup"><div class="row popup"><h3>'+self.name+'</h3>' + self.flickr() + self.foursquare(); + '</div></div>'
+        console.log(newContent);
+        self.popup.setContent(newContent);
+    })
     
-    this.showPopup = function() {
-        if(this.popup.getMap()){this.popup.close()} else {this.popup.open(map, this.marker)};
+    self.showPopup = function() {
+        if(self.popup.getMap()){self.popup.close()} 
+        else {
+            getFlickr(self.position, self.name, self.flickr, self.foursquare);
+            self.popup.open(map, self.marker)};
     };
     
-    this.hideButton = function(){this.visibleMarker(false)};
-    this.showButton = function(){this.visibleMarker(true)};
+    google.maps.event.addListener(self.marker, 'click', (function(pos, name, flickr, foursquare, marker) {
+        return function() {
+            getFlickr(pos, name, flickr, foursquare);
+            self.popup.open(map,marker);
+            console.log(self.popup.getContent());
+            console.log(self.flickr());
+        }
+        
+    })(self.position, self.name, self.flickr, self.foursquare, self.marker)
+    );
+    
+    self.hideButton = function(){self.visibleMarker(false)};
+    self.showButton = function(){self.visibleMarker(true)};
 }
 
 function markerViewModel() {
@@ -139,6 +227,8 @@ function markerViewModel() {
         localMarkers.forEach(function(item) {
             locationList.push(new maplocation(item.position, item.title, item.content)) 
         });
+        //sort locationList
+        
         return locationList;
     })();
     
@@ -160,24 +250,11 @@ function markerViewModel() {
     
 }
 
-
-
-var getFlickr2 = function(pos) {
-    var url = 'https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=7abca36c88c5c619545ef842155974d9&lat='+pos[0]+'&lon='+pos[1]+'&radius=0.01&per_page=20&page=1&format=json&nojsoncallback=1';
-    $.getJSON(url, function(response) {
-        console.log(response);
-        console.log(response.photos.photo.length);
-        for (i=0; i<response.photos.photo.length; i++) {
-            console.log(response.photos.photo[i].id)
-        }
-    })
-}
-
 function initialise() {
     var mapbox = document.getElementById('map-container');
     var mapOptions = {
-        center: new google.maps.LatLng(53.34987099459691, -6.2708336062987575), //centre of dublin
-        zoom: 15,
+        center: new google.maps.LatLng(53.34628441758734, -6.26027643161614), //centre of dublin
+        zoom: 16,
         mapTypeId: google.maps.MapTypeId.ROADMAP
     }
     
