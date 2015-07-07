@@ -1,8 +1,11 @@
 /*
 TODO:
 
-Change markers when selected (e.g. bounce)
-Grunt automation
+Grunt automation X
+One marker selected at a time (is this necessary?)
+Sort function to alphabetise items
+Research Search functionality inc autocomplete
+
 */
 
 //Starting Variables
@@ -21,6 +24,7 @@ var mapStyles = [
         ]
       },{
         "featureType": "road",
+        "elementType": "all",
         "stylers": [
           { "visibility": "simplified" }
         ]
@@ -40,9 +44,7 @@ var mapStyles = [
         "featureType": "poi.park",
         "elementType": "geometry.fill",
         "stylers": [
-          { "color": "#0cca8a",
-            "visibility": "on"
-          }
+          { "color": "#0cca8a" }
         ]
       },{
         "featureType": "poi.medical",
@@ -50,173 +52,210 @@ var mapStyles = [
         "stylers": [
           { "visibility": "off" }
         ]
-      },{
-      }
-    ]
+      },
+    ];
 
-//list of locations, with name, location and some initial content. 
-//TODO: remove initial content or replace with AJAX'd stuff
+//list of locations, with name, location and type (for icons). 
 var localMarkers = [
     {
-        title: 'Pantibar',
+        title: 'Capel Street',
         position: [53.346773, -6.267874],
-        content: '<a>https://www.facebook.com/colin.mccusker1/videos/10153282679114618/</a>'
+        type: 'restaurant'
     },
     {
-        title: 'Dublin Castle Courtyard',
+        title: 'Dublin Castle',
         position: [53.343174, -6.267567],
-        content: '<iframe width="560" height="315" src="https://www.youtube.com/embed/FK3OvGX0O00" frameborder="0" allowfullscreen></iframe>'
+        type: 'historic'
     },
     {
-        title: 'The George',
+        title: 'Georges Street',
         position: [53.343762, -6.264677],
-        content: 'http://www.tv3.ie/xpose/article/tv-news/167801/Vincent-Browne-LIVE-from-The-George-Bar'
+        type: 'bar'
     },
     {
-        title: 'Abby Theatre',
-        position: [53.348614, -6.257153],
-        content: '<iframe width="560" height="315" src="https://www.youtube.com/embed/WXayhUzWnl0" frameborder="0" allowfullscreen></iframe>'
+        title: 'Abby Street',
+        position: [53.348746, -6.257595],
+        type: 'entertainment'
     },
     {
         title: 'Trinity College',
         position: [53.344401, -6.257330],
-        content: ''
+        type: 'historic'
     },
     {
-        title: 'Millstone Restaurant',
-        position: [53.344126, -6.262710],
-        content:''
+        title: 'Dame Street',
+        position: [53.344252, -6.262458],
+        type: 'restaurant'
     },
     {
-        title: 'Meeting House Square',
-        position: [53.344991, -6.265374],
-        content:''
+        title: 'Temple bar',
+        position: [53.345588, -6.263162],
+        type:'bar'
     },
     {
-        title: 'Lemon Jelly',
+        title: 'Millenium Walkway',
         position: [53.347149, -6.265395],
-        content: ''
+        type: 'restaurant'
+    },
+    {
+        title: "O'Connell Street",
+        position: [53.349884, -6.260418],
+        type: 'shopping'
+    },
+    {
+        title: 'Jervis Street',
+        position: [53.348098, -6.266392],
+        type: 'shopping'
+    },
+    {
+        title: 'Merrion Square',
+        position: [53.339656, -6.249180],
+        type: 'art'
+    },
+    {
+        title: 'St Stephens Green',
+        position: [53.338197, -6.259118],
+        type: 'art'
+    },
+    {
+        title: "Grafton Street",
+        position: [53.341731, -6.260119],
+        type: 'shopping'
+    },
+    {
+        title: 'Henry Street',
+        position: [53.349456, -6.262274],
+        type: 'shopping'
     }
 ];
 
-//function to take a marker and popup and get flicker data, create a string and set content of popup box
-//Note: Flickr's API requires that the callback name is specified with 'jsoncallback' instead of just callback which is jQuery's default.
-//TODO: add other AJAX call to foursquare
-var getFlickr = function(marker, popup) {
-    var pos = marker.getPosition();
-    console.log(pos);
-    var url = 'https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=7abca36c88c5c619545ef842155974d9&lat='+pos.A+'&lon='+pos.F+'&radius=0.01&per_page=8&page=1&format=json';
-    $.ajax(url, {
-        dataType: 'jsonp',
-        jsonp: 'jsoncallback',
-        success: function(response) {
-            console.log(response);
-            var allPhotos = response.photos.photo;
-            var content = '<div class="container-fluid popup" width=450 height=450><div class="row popup">';
-            content += '<h3>'+marker.getTitle()+'</h3>';
-            for (i=0; i <allPhotos.length; i++) {
-                var photoUrl = 'https://farm'+ allPhotos[i].farm +'.staticflickr.com/'+ allPhotos[i].server +'/'+ allPhotos[i].id +'_'+ allPhotos[i].secret +'_q.jpg';
-                var thisImage = '<img src="'+photoUrl+'">';
-                content += thisImage;
-            }
-            content += '</div></div>';
-            popup.setContent(content);
-        }
-    })
-}
+//foursquare category codes for types in locations
 
-var getFlickr = function(pos, name, flickr, foursq) {
-    //var pos = marker.getPosition();
-    console.log(pos);
+var categories = {
+    'art': '4bf58dd8d48988d166941735', // 507c8c4091d498d9fc8c67a9 outdoor art ('4bf58dd8d48988d166941735' sculpture garden)
+    'shopping': '4d4b7105d754a06378d81259', //shop and service
+    'restaurant': '4d4b7105d754a06374d81259', //food
+    'entertainment': '4bf58dd8d48988d1f2931735',  //performing arts
+    'historic': '4bf58dd8d48988d190941735', //4deefb944765f83613cdba6e historic site
+    'bar': '4d4b7105d754a06376d81259' //nightlife spot
+};
+
+//function to take a marker and popup and get flicker and foursquare data, create a string and set content of popup box
+//Note: Flickr's API requires that the callback name is specified with 'jsoncallback' instead of just 'callback' which is jQuery's default.
+
+var getFlickr = function(pos, name, flickr, foursq, type) {
     
     var flickrUrl = 'https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=7abca36c88c5c619545ef842155974d9&lat='+pos[0]+'&lon='+pos[1]+'&radius=0.01&per_page=8&page=1&format=json';
     $.ajax(flickrUrl, {
         dataType: 'jsonp',
         jsonp: 'jsoncallback',
         success: function(response) {
-            console.log(response);
             var allPhotos = response.photos.photo;
-            var flickrStr = '<div class="photos">';
+            var flickrStr = '<div class="flickr col-md-7 col-sm-7">';
+            
             for (i=0; i <allPhotos.length; i++) {
                 var photoUrl = 'https://farm'+ allPhotos[i].farm +'.staticflickr.com/'+ allPhotos[i].server +'/'+ allPhotos[i].id +'_'+ allPhotos[i].secret +'_q.jpg';
-                var thisImage = '<img src="'+photoUrl+'">';
+                var thisImage = '<div><img class="img-responsive" src="'+photoUrl+'"></div>';
                 flickrStr += thisImage;
             }
             flickrStr += '</div>';
             flickr(flickrStr);
         }
     });
-    
-    var foursqUrl = 'https://api.foursquare.com/v2/venues/search/?ll='+pos[0]+','+pos[1]+'&radius=50&query='+name+'&intent=browse&client_id=JILQ425OSSB1A4PVRXHIOSMZLBMQ2LDZPPSDPBVPYIMLSVDQ&client_secret=RT0YLMXT4DRGCVZLTNKLKBTXHDCHFFPAE5AKZKPQ3SP15Q0R&v=20130815';
+
+    var foursqUrl = 'https://api.foursquare.com/v2/venues/search/?ll='+pos[0]+','+pos[1]+'&radius=200&categoryId='+categories[type]+'&intent=browse&limit=8&client_id=JILQ425OSSB1A4PVRXHIOSMZLBMQ2LDZPPSDPBVPYIMLSVDQ&client_secret=RT0YLMXT4DRGCVZLTNKLKBTXHDCHFFPAE5AKZKPQ3SP15Q0R&v=20130815';
     $.ajax(foursqUrl, {
         dataType: 'json',
         success: function(response) {
-            console.log(response);
-            var foursqStr = '<div>';
+            //console.log(response);
+            var foursqStr = '<div class="foursquare col-md-5">';
             var allPlaces = response.response.venues;
-            var placeData = '<div><h4>Nearby Locations</h4><div class="singleplace">';
+            var placeData = '<div><h4>Nearby FourSquare Locations (<span class="titlecase">'+ type +'</span>)</h4></div>';
             for (i=0; i < allPlaces.length; i++) {
-                //display venue.name, venue.formattedAddress[0][1][2], webpage and venue.formattedPhone
                 var thisPlace = allPlaces[i];
-                console.log(thisPlace);
-                placeData += '<div class="placename">'+thisPlace.name+'</div>';
-                placeData += '<div class="placedetails">Address: '+ thisPlace.location.formattedAddress[0] + ' ' + thisPlace.location.formattedAddress[1] + ' ' + thisPlace.location.formattedAddress[2] + '</div>';
-                placeData += '<div class="placedetails">Phone: '+ thisPlace.contact.formattedPhone + '</div>';
-            };
+
+                placeData += '<div class="singleplace"><div class="placename">'+thisPlace.name+'</div>';
+                
+                placeData += '<div class="placedetails">';
+                if (thisPlace.location.formattedAddress[0] !== undefined) {
+                    placeData += 'Address: '+ thisPlace.location.formattedAddress[0];
+                }
+                if (thisPlace.location.formattedAddress[1] !== undefined) {
+                    placeData += ' ' + thisPlace.location.formattedAddress[1];
+                }
+                if (thisPlace.location.formattedAddress[2] !== undefined) {
+                    placeData += ' ' + thisPlace.location.formattedAddress[2];
+                }
+                placeData += '</div>';
+                
+                if (thisPlace.contact.formattedPhone !== undefined) {
+                    placeData += '<div class="placedetails">Phone: '+ thisPlace.contact.formattedPhone + '</div>';
+                }
+                placeData += '</div>';
+            }
             foursqStr += placeData;
-            foursqStr += '</div></div>';
+            foursqStr += '</div>';
             foursq(foursqStr);
         }
     });
-}
+};
 
-// location object to go in array. Contains info about the location inc. whether it's visible in the search buttons or not, plus the marker and popup objects for each location (and listeners with closures)
-// Also added functions to show/hide popups, and to show/hide search panel button
-//TODO: Integrate getting info with showPopup function. Can listener take this function as a callback?
-function maplocation(pos, name, content) {
+// location object to go in MVVM array. Contains info about the location inc. whether it's visible in the search buttons or not, plus the marker and popup objects for each location (and listeners with closures)
+
+function maplocation(pos, name, type) {
     var self = this;
     self.position = pos;
+    self.latlng = new google.maps.LatLng(pos[0], pos[1]);
     self.name = name;
-    self.flickr = ko.observable('<h4>Flickr Stream</h4>');
-    self.foursquare = ko.observable('<h4>Foursquare nearby locations</h4>');
+    self.type = type;
+    self.loaded = false;
+    self.icon = 'icons/'+type.toLowerCase()+'.png';
+    self.flickr = ko.observable('<img src="images/ajax-loader.gif">');
+    self.foursquare = ko.observable('<img src="images/ajax-loader.gif">');
     self.visibleMarker = ko.observable(true);
+    self.selected = ko.observable(false);
     
     self.marker = new google.maps.Marker({
-        position: new google.maps.LatLng(pos[0], pos[1]),
-        title: name,
-        map: map
+        position: self.latlng,
+        title: self.name,
+        map: map,
+        icon: self.icon
     });
     
     self.popup = new google.maps.InfoWindow({
         content: '<div><h3>' + name + '</h3></div>'  });
     
+    //if either flickr or foursquare change, update popup content
     self.popupdate = ko.computed(function (){
-        //if either flickr or foursquare change, update popup content
-        var newContent = '<div class="container-fluid popup"><div class="row popup"><h3>'+self.name+'</h3>' + self.flickr() + self.foursquare(); + '</div></div>'
-        console.log(newContent);
+        var newContent = '<div class="container-fluid popup"><div class="row popup"><div class="col-md-12"><h3>'+self.name+'</h3></div></div><div class="row">' + self.flickr() + self.foursquare() + '</div></div>';
+        //console.log(newContent);
         self.popup.setContent(newContent);
-    })
+    });
     
-    self.showPopup = function() {
-        if(self.popup.getMap()){self.popup.close()} 
-        else {
-            getFlickr(self.position, self.name, self.flickr, self.foursquare);
-            self.popup.open(map, self.marker)};
-    };
-    
-    google.maps.event.addListener(self.marker, 'click', (function(pos, name, flickr, foursquare, marker) {
-        return function() {
-            getFlickr(pos, name, flickr, foursquare);
-            self.popup.open(map,marker);
-            console.log(self.popup.getContent());
-            console.log(self.flickr());
+    self.selectMarker = ko.computed(function() {
+        if (!self.loaded){
+            getFlickr(self.position, self.name, self.flickr, self.foursquare, self.type);
+            self.loaded = true;
         }
-        
-    })(self.position, self.name, self.flickr, self.foursquare, self.marker)
-    );
+        if (self.selected()) {
+
+            self.popup.open(map, self.marker);
+            self.marker.setAnimation(google.maps.Animation.BOUNCE);
+            }
+        else {
+            self.popup.close();
+            self.marker.setAnimation(null);
+        }
+    });
     
-    self.hideButton = function(){self.visibleMarker(false)};
-    self.showButton = function(){self.visibleMarker(true)};
+    self.toggleSelected = function() { self.selected(!self.selected()); };
+    
+    google.maps.event.addListener(self.marker, 'click', (function(toggle) {return toggle;} )(self.toggleSelected));
+    
+    google.maps.event.addListener(self.popup, 'closeclick', (function(toggle) {return toggle;} )(self.toggleSelected));    
+
+    self.hideButton = function(){self.visibleMarker(false);};
+    self.showButton = function(){self.visibleMarker(true);};
 }
 
 function markerViewModel() {
@@ -225,41 +264,38 @@ function markerViewModel() {
     self.locations = (function(){
         var locationList = [];
         localMarkers.forEach(function(item) {
-            locationList.push(new maplocation(item.position, item.title, item.content)) 
+            locationList.push(new maplocation(item.position, item.title, item.type));
         });
-        //sort locationList
-        
+        locationList.sort( function(first, second) { 
+            return first.name < second.name ? -1 : (first.name > second.name ? 1 : 0 );
+        });
         return locationList;
     })();
     
     self.search = function() {
         var searchTerm = $('#searchbox').val().toLowerCase();
-        console.log(searchTerm.length);
         if (searchTerm.length > 0) {
-                //console.log("searchterm more than 0");
                 self.locations.forEach(function(location){
-                    
-                    if (location.name.toLowerCase().includes(searchTerm)) { location.visibleMarker(true)} else {location.visibleMarker(false)}
+                    if (location.name.toLowerCase().includes(searchTerm)) { location.visibleMarker(true);} else {location.visibleMarker(false);}
                 });
             }
         else {
-            console.log("searchterm less than 0");
-            self.locations.forEach(function(location){location.visibleMarker(true)});
+            //console.log("searchterm less than 0");
+            self.locations.forEach(function(location){location.visibleMarker(true);});
             }
     };
-    
 }
 
 function initialise() {
     var mapbox = document.getElementById('map-container');
     var mapOptions = {
-        center: new google.maps.LatLng(53.34628441758734, -6.26027643161614), //centre of dublin
-        zoom: 16,
-        mapTypeId: google.maps.MapTypeId.ROADMAP
-    }
+        center: new google.maps.LatLng(53.34486891755311, -6.258903140600515), //centre of dublin
+        zoom: 15,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        styles: mapStyles
+    };
     
     map = new google.maps.Map(mapbox, mapOptions);
-        map.set('styles', mapStyles);
     
     ko.applyBindings(new markerViewModel());
     
@@ -268,33 +304,10 @@ function initialise() {
 
 google.maps.event.addDomListener(window, 'load', initialise);
 
-// Markers - can be created and stored, and not drawn til later if you like using marker.setMap()
-// https://developers.google.com/maps/documentation/javascript/markers
-// draggable - dragged marker changes its position value.
-
 
 /*
-
-Organise!
-
-markerViewModel
-- contains all data about markers, draws markers, markers have click functions to make popup box
-
-each location is
-- position {lat: x, lng: y}
-- title
-- visible (observable(true))
-- a marker
-- marker has calculated values? would that work?
-each marker
-
-searchbox - when typed in triggers an event to compare contents to titles
-
-TODO: AJAX flickr content for popups
+AJAX flickr content for popups
 https://www.flickr.com/services/api/explore/flickr.photos.search
 https://www.flickr.com/services/api/flickr.photos.search.html
-
 https://api.flickr.com/services/rest/?method=flickr.photos.search&api_key=fc778e032734a15eb7f780767d7994ba&lat=53.343174&lon=-6.267567&radius=0.01&per_page=20&page=1&format=json&nojsoncallback=1&api_sig=865d52131b668519cec3b571100e3b65
-
 */
-
